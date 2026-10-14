@@ -1,76 +1,111 @@
-import Link from 'next/link';
-import { MapPin, Users, Clock } from 'lucide-react';
-import { formatDate } from '@/lib/utils';
+'use client'
 
-interface Job {
-  _id: string;
-  title: string;
-  companyName: string;
-  location: string;
-  region?: string;
-  salary?: string;
-  description: string;
-  skills?: string[];
-  applicationsCount?: number;
-  createdAt: string;
-}
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { MapPin, Hash, ArrowLeft } from 'lucide-react'
+import { Job } from '@/types'
+import { truncate } from '@/lib/utils'
+import { getJobEmoji, getEmojiColors } from '@/lib/jobEmoji'
 
-export default function JobCard({ job }: { job: Job }) {
+export { getJobEmoji }
+
+export function JobCard({ job }: { job: Job }) {
+  const emoji = getJobEmoji(job.title || '')
+  const colors = getEmojiColors(emoji)
+  const [isNew, setIsNew] = useState(false)
+  useEffect(() => {
+    setIsNew(!!job.created_at && (Date.now() - new Date(job.created_at).getTime()) < 3 * 24 * 60 * 60 * 1000)
+  }, [job.created_at])
+
   return (
-    <div className="card hover:shadow-md transition-shadow group">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <Link href={`/jobs/${job._id}`}>
-            <h3 className="font-semibold text-lg text-gray-900 group-hover:text-primary-600 transition-colors truncate">
-              {job.title}
-            </h3>
-          </Link>
-          <p className="text-primary-600 font-medium mt-0.5">{job.companyName}</p>
+    <Link href={`/jobs/${job.id}`} style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
+      <div
+        style={{
+          background: 'white',
+          borderRadius: '20px',
+          border: '1.5px solid #E5E7EB',
+          padding: '20px',
+          cursor: 'pointer',
+          height: '100%',
+          boxSizing: 'border-box',
+          display: 'flex',
+          flexDirection: 'column',
+          transition: 'all 0.2s ease',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+        onMouseEnter={e => {
+          const el = e.currentTarget as HTMLDivElement
+          el.style.borderColor = '#818CF8'
+          el.style.boxShadow = '0 8px 30px rgba(99,102,241,0.15)'
+          el.style.transform = 'translateY(-3px)'
+        }}
+        onMouseLeave={e => {
+          const el = e.currentTarget as HTMLDivElement
+          el.style.borderColor = '#E5E7EB'
+          el.style.boxShadow = 'none'
+          el.style.transform = 'none'
+        }}
+      >
+        {/* Top row: emoji + badges */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '14px' }}>
+          <div style={{
+            width: '52px', height: '52px', borderRadius: '14px',
+            background: colors.bg,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '26px', flexShrink: 0,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+          }}>
+            {emoji}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+            {isNew && (
+              <span style={{ background: 'linear-gradient(135deg,#10B981,#059669)', color: 'white', fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '999px', letterSpacing: '0.5px' }}>
+                חדש ✨
+              </span>
+            )}
+            {job.salary ? (
+              <span style={{ background: '#ECFDF5', color: '#065F46', border: '1px solid #A7F3D0', fontSize: '11px', fontWeight: '600', padding: '3px 8px', borderRadius: '999px' }}>
+                ₪ {job.salary}
+              </span>
+            ) : (
+              <span style={{ background: '#F3F4F6', color: '#9CA3AF', border: '1px solid #E5E7EB', fontSize: '11px', fontWeight: '500', padding: '3px 8px', borderRadius: '999px' }}>
+                שכר חסוי
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          {job.region && job.region !== 'אחר' && (
-            <span className="badge bg-indigo-50 text-indigo-700 text-xs">{job.region}</span>
-          )}
-          <Link href={`/jobs/${job._id}/apply`} className="btn-primary text-sm">
-            הגש מועמדות
-          </Link>
+
+        <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#111827', lineHeight: '1.4', margin: '0 0 8px', wordBreak: 'break-word' }}>
+          {(job.title || '').replace(/^\*+\s*|\s*\*+$/g, '').trim()}
+        </h3>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '10px' }}>
+          <MapPin style={{ width: '12px', height: '12px', color: job.city ? '#6366F1' : '#9CA3AF', flexShrink: 0 }} />
+          <span style={{ fontSize: '12px', color: job.city ? '#4B5563' : '#9CA3AF', fontWeight: '500' }}>
+            {job.city || 'מיקום לא צוין'}
+          </span>
+        </div>
+
+        {job.description && (
+          <p style={{ fontSize: '12px', color: '#9CA3AF', lineHeight: '1.6', margin: '0 0 auto', paddingBottom: '14px' }}>
+            {truncate(job.description.replace(/\n+/g, ' '), 90)}
+          </p>
+        )}
+
+        <div style={{ paddingTop: '12px', borderTop: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <Hash style={{ width: '10px', height: '10px', color: '#D1D5DB' }} />
+            <span style={{ fontSize: '11px', color: '#9CA3AF' }}>
+              {job.job_number ? `משרה ${job.job_number}` : 'ללא מספר'}
+            </span>
+          </div>
+          <span style={{ fontSize: '12px', fontWeight: '700', color: '#4F46E5', display: 'flex', alignItems: 'center', gap: '3px' }}>
+            פרטים <ArrowLeft style={{ width: '12px', height: '12px' }} />
+          </span>
         </div>
       </div>
-
-      <div className="flex flex-wrap gap-4 mt-4 text-sm text-gray-500">
-        <span className="flex items-center gap-1">
-          <MapPin className="w-4 h-4" />
-          {job.location}
-        </span>
-        {job.salary && (
-          <span className="font-medium text-green-700">
-            {job.salary}
-          </span>
-        )}
-        {job.applicationsCount !== undefined && (
-          <span className="flex items-center gap-1">
-            <Users className="w-4 h-4" />
-            {job.applicationsCount} מועמדים
-          </span>
-        )}
-        <span className="flex items-center gap-1">
-          <Clock className="w-4 h-4" />
-          {formatDate(job.createdAt)}
-        </span>
-      </div>
-
-      {job.skills && job.skills.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mt-4">
-          {job.skills.slice(0, 5).map(skill => (
-            <span key={skill} className="badge bg-primary-50 text-primary-700">{skill}</span>
-          ))}
-          {job.skills.length > 5 && (
-            <span className="badge bg-gray-100 text-gray-500">+{job.skills.length - 5}</span>
-          )}
-        </div>
-      )}
-
-      <p className="mt-3 text-sm text-gray-600 line-clamp-2">{job.description}</p>
-    </div>
-  );
+    </Link>
+  )
 }
